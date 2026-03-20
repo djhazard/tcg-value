@@ -207,7 +207,19 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: pointer;
+    transition: white-space 0.15s;
   }
+  .deal-name.expanded {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .deal-name a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .deal-name a:active { opacity: 0.7; }
   .deal-set {
     font-family: 'DM Mono', monospace;
     font-size: 10px;
@@ -297,7 +309,63 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: pointer;
   }
+  .prod-name.expanded {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .prod-name a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .prod-name a:active { opacity: 0.7; }
+
+  /* ── OVER-MARKET TOGGLE ── */
+  .toggle-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 9px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .toggle-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    flex: 1;
+    letter-spacing: 1px;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent-dim); border: 1px solid rgba(200,241,53,0.3); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); background: var(--accent); }
   .prod-meta {
     font-family: 'DM Mono', monospace;
     font-size: 10px;
@@ -584,6 +652,13 @@
           <option value="all">All Sets</option>
         </select>
         <button class="export-btn" id="exportAllBtn" style="display:none;flex:0;padding:8px 12px;white-space:nowrap;" onclick="exportAllCSV()">Export</button>
+      </div>
+      <div class="toggle-bar">
+        <div class="toggle-label">Show over-market products</div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="showOverMarket" checked onchange="renderFullData()">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
       <div id="fullDataContent">
         <div class="empty-state">
@@ -985,7 +1060,7 @@ function renderDeals() {
       <div class="deal-row ${i === 0 ? 'top1' : ''}">
         <div class="deal-rank ${medal ? '' : 'num'}">${medal || '#' + (i + 1)}</div>
         <div class="deal-info">
-          <div class="deal-name">${esc(r.label)}</div>
+          <div class="deal-name" onclick="toggleExpand(this)"><a href="${esc(r.url)}" target="_blank" onclick="event.stopPropagation()">${esc(r.label)}</a></div>
           <div class="deal-set">${esc(r.setName)} · ${r.packs} packs · $${r.refPrice.toFixed(2)}/pack ref</div>
         </div>
         <div class="deal-prices">
@@ -998,9 +1073,10 @@ function renderDeals() {
 
 // ── RENDER FULL DATA TAB ───────────────────────────────────────────
 function renderFullData() {
-  const el     = document.getElementById('fullDataContent');
-  const filter = document.getElementById('setFilter').value;
-  const exportBtn = document.getElementById('exportAllBtn');
+  const el          = document.getElementById('fullDataContent');
+  const filter      = document.getElementById('setFilter').value;
+  const showOver    = document.getElementById('showOverMarket').checked;
+  const exportBtn   = document.getElementById('exportAllBtn');
 
   if (analysisResults.length === 0) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div>Run analysis to see full data</div>`;
@@ -1023,16 +1099,22 @@ function renderFullData() {
         <div class="set-ref-line" style="color:var(--red)">⚠ ${esc(res.refError)}</div>
       </div>`;
 
+    const filteredRows = showOver
+      ? res.rows
+      : res.rows.filter(r => r.pct == null || r.pct < 0.5);
+
+    if (filteredRows.length === 0) return '';
+
     return `
       <div class="set-section fade-in">
         <div class="set-section-title">${esc(res.setName)}</div>
         <div class="set-ref-line">Market ref: <strong>$${res.refPrice.toFixed(2)}</strong> / pack</div>
         <div class="card">
-          ${res.rows.map(r => {
+          ${filteredRows.map(r => {
             if (r.error) return `
               <div class="prod-row">
                 <div class="prod-info">
-                  <div class="prod-name">${esc(r.label)}</div>
+                  <div class="prod-name" onclick="toggleExpand(this)">${esc(r.label)}</div>
                   <div class="prod-meta" style="color:var(--red)">⚠ ${esc(r.error)}</div>
                 </div>
               </div>`;
@@ -1040,7 +1122,7 @@ function renderFullData() {
             return `
               <div class="prod-row ${r.isBest ? 'best' : ''}">
                 <div class="prod-info">
-                  <div class="prod-name">${esc(r.label)}${r.isBest ? '<span class="badge-best">Best</span>' : ''}</div>
+                  <div class="prod-name" onclick="toggleExpand(this)"><a href="${esc(r.url)}" target="_blank" onclick="event.stopPropagation()">${esc(r.label)}${r.isBest ? '<span class="badge-best">Best</span>' : ''}</a></div>
                   <div class="prod-meta">${r.packs} packs · $${r.boxPrice.toFixed(2)} box</div>
                 </div>
                 <div class="prod-right">
@@ -1092,6 +1174,7 @@ dealsPane.addEventListener('touchend', e => {
 });
 
 // ── STATUS HELPERS ─────────────────────────────────────────────────
+function toggleExpand(el) { el.classList.toggle('expanded'); }
 function showStatus(id, msg, type) { const e = document.getElementById(id); e.innerHTML = msg; e.className = `status-bar ${type}`; if (type === 'ok') setTimeout(() => e.className = 'status-bar', 3000); }
 function hideStatus(id) { document.getElementById(id).className = 'status-bar'; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
