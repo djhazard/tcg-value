@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TCG Value">
+<meta name="theme-color" content="#0d0f0a">
+<title>TCG Value Analyzer</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d0f0a'/><text y='.9em' font-size='80' x='10'>⚡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0d0f0a;
+    --surface:    #141710;
+    --surface2:   #1c1f16;
+    --border:     #2a2e1f;
+    --accent:     #c8f135;
+    --accent-dim: rgba(200,241,53,0.10);
+    --accent2:    #f1a035;
+    --red:        #f13535;
+    --red-dim:    rgba(241,53,53,0.10);
+    --green:      #35f1a0;
+    --green-dim:  rgba(53,241,160,0.10);
+    --yellow:     #f1d035;
+    --text:       #e8edd8;
+    --muted:      #6b7055;
+    --safe-top:   env(safe-area-inset-top, 0px);
+    --safe-bot:   env(safe-area-inset-bottom, 0px);
+    --tab-h:      60px;
+    --header-h:   56px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    position: fixed;
+  }
+
+  /* ── APP SHELL ── */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bot);
+  }
+
+  /* ── HEADER ── */
+  .header {
+    height: var(--header-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    flex-shrink: 0;
+  }
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 3px;
+    line-height: 1;
+  }
+  .header-title span { color: var(--accent); }
+  .header-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .last-run-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: right;
+    max-width: 120px;
+    line-height: 1.4;
+  }
+
+  /* ── TAB CONTENT AREA ── */
+  .tab-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .tab-pane {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: none;
+    padding: 16px 16px 8px;
+  }
+  .tab-pane.active { display: block; }
+
+  /* ── BOTTOM TAB BAR ── */
+  .tab-bar {
+    height: var(--tab-h);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 0;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn svg { width: 22px; height: 22px; }
+  .tab-btn span {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .card-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* ── TOP DEALS TAB ── */
+  .top-deals-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+  }
+  .section-title span { color: var(--accent); }
+
+  .deal-row {
+    display: flex;
+    align-items: center;
+    padding: 13px 14px;
+    border-bottom: 1px solid rgba(42,46,31,0.6);
+    gap: 10px;
+  }
+  .deal-row:last-child { border-bottom: none; }
+  .deal-row.top1 { background: var(--accent-dim); }
+
+  .deal-rank {
+    font-size: 18px;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .deal-rank.num {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .deal-info { flex: 1; min-width: 0; }
+  .deal-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .deal-set {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .deal-prices { text-align: right; flex-shrink: 0; }
+  .deal-ppp {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .deal-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .deal-pct.under { color: var(--green); }
+  .deal-pct.over  { color: var(--red); }
+  .deal-pct.even  { color: var(--yellow); }
+
+  /* ── FULL DATA TAB ── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: center;
+  }
+  .filter-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .filter-select {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7055' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .set-section { margin-bottom: 16px; }
+  .set-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+    padding: 0 2px;
+  }
+  .set-ref-line {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .set-ref-line strong { color: var(--accent); }
+
+  .prod-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(42,46,31,0.6);
+    gap: 10px;
+  }
+  .prod-row:last-child { border-bottom: none; }
+  .prod-row.best { background: var(--accent-dim); }
+
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .prod-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .prod-right { text-align: right; flex-shrink: 0; }
+  .prod-ppp {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .prod-box {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .badge-best {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 1px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background: var(--accent);
+    color: #0d0f0a;
+    font-weight: 700;
+    margin-left: 5px;
+    vertical-align: middle;
+    text-transform: uppercase;
+  }
+
+  .pct-chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .pct-chip.under { background: var(--green-dim); color: var(--green); border: 1px solid rgba(53,241,160,0.2); }
+  .pct-chip.over  { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(241,53,53,0.2); }
+  .pct-chip.even  { background: rgba(241,208,53,0.08); color: var(--yellow); border: 1px solid rgba(241,208,53,0.15); }
+
+  /* ── MANAGE TAB ── */
+  .sl {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 18px 0 8px;
+  }
+  .sl:first-child { margin-top: 0; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .field label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .field input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field input::placeholder { color: var(--muted); }
+
+  .btn {
+    background: var(--accent);
+    color: #0d0f0a;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 13px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+  .btn:active { opacity: 0.8; transform: scale(0.98); }
+  .btn:disabled { opacity: 0.35; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:active { opacity: 0.7; }
+
+  .btn-green {
+    background: transparent;
+    color: var(--green);
+    border: 1px solid rgba(53,241,160,0.3);
+  }
+
+  .btn-red {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid rgba(241,53,53,0.2);
+  }
+
+  .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  .run-btn-wrap {
+    margin-bottom: 6px;
+  }
+
+  .run-btn {
+    background: var(--accent);
+    color: #0d0f0a;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    -webkit-appearance: none;
+  }
+  .run-btn:active { opacity: 0.85; transform: scale(0.99); }
+  .run-btn:disabled { opacity: 0.35; }
+
+  .status-bar {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    line-height: 1.6;
+    display: none;
+  }
+  .status-bar.loading { display: block; background: rgba(241,160,53,0.08); border: 1px solid rgba(241,160,53,0.25); color: var(--accent2); }
+  .status-bar.error   { display: block; background: var(--red-dim); border: 1px solid rgba(241,53,53,0.25); color: var(--red); }
+  .status-bar.ok      { display: block; background: var(--green-dim); border: 1px solid rgba(53,241,160,0.25); color: var(--green); }
+
+  /* Set tabs in manage */
+  .set-tabs { display: flex; flex-direction: column; gap: 6px; }
+  .set-tab {
+    display: flex; align-items: center;
+    padding: 11px 13px; border-radius: 8px;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg); transition: all 0.15s; gap: 8px;
+  }
+  .set-tab.active { background: var(--accent-dim); border-color: rgba(200,241,53,0.3); }
+  .set-tab-name { flex: 1; font-size: 13px; font-weight: 500; }
+  .set-tab-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+  .set-tab-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 6px; }
+
+  .prod-manage-item {
+    display: flex; align-items: center;
+    padding: 11px 13px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg);
+    margin-bottom: 6px; gap: 8px;
+  }
+  .pmi-info { flex: 1; min-width: 0; }
+  .pmi-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pmi-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .pmi-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px 6px; flex-shrink: 0; }
+
+  /* Empty states */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    line-height: 1.8;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.35; }
+
+  /* Pull to refresh indicator */
+  .ptr-indicator {
+    text-align: center;
+    padding: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: none;
+  }
+  .ptr-indicator.visible { display: block; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block; width: 11px; height: 11px;
+    border: 2px solid rgba(241,160,53,0.3);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 6px; vertical-align: middle;
+  }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+  .fade-in { animation: fadeUp 0.3s ease both; }
+
+  .divider { height: 1px; background: var(--border); margin: 6px 0 14px; }
+
+  /* Export row */
+  .export-row { display: flex; gap: 8px; margin-top: 6px; }
+  .export-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid rgba(200,241,53,0.3);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .export-btn:active { opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <div>
+      <div class="header-title">TCG <span>VALUE</span></div>
+      <div class="header-sub">Pack Price Analyzer</div>
+    </div>
+    <div class="header-right">
+      <div class="last-run-badge" id="lastRunBadge">Not yet run</div>
+    </div>
+  </div>
+
+  <!-- ── TAB CONTENT ── -->
+  <div class="tab-content">
+
+    <!-- TAB 1: TOP DEALS -->
+    <div class="tab-pane active" id="pane-deals">
+      <div class="ptr-indicator" id="ptrIndicator">↓ Pull to refresh</div>
+
+      <div class="top-deals-header">
+        <div class="section-title">Top <span>Deals</span></div>
+        <button class="export-btn" id="exportTop10Btn" style="display:none;flex:0;padding:8px 12px;" onclick="exportTop10CSV()">Export</button>
+      </div>
+
+      <div id="dealsContent">
+        <div class="empty-state">
+          <div class="empty-icon">⚡</div>
+          Go to Manage tab<br>and run analysis<br>to see top deals
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: FULL DATA -->
+    <div class="tab-pane" id="pane-data">
+      <div class="filter-bar">
+        <div class="filter-label">Set:</div>
+        <select class="filter-select" id="setFilter" onchange="renderFullData()">
+          <option value="all">All Sets</option>
+        </select>
+        <button class="export-btn" id="exportAllBtn" style="display:none;flex:0;padding:8px 12px;white-space:nowrap;" onclick="exportAllCSV()">Export</button>
+      </div>
+      <div id="fullDataContent">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          Run analysis to<br>see full data
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: MANAGE -->
+    <div class="tab-pane" id="pane-manage">
+
+      <!-- RUN ANALYSIS -->
+      <div class="sl">// Run Analysis</div>
+      <div class="run-btn-wrap">
+        <button class="run-btn" id="runBtn" onclick="runAnalysis()">▶ Run Analysis</button>
+      </div>
+      <div class="status-bar" id="runStatus"></div>
+
+      <div class="divider"></div>
+
+      <!-- SETS -->
+      <div class="sl">// Sets</div>
+      <div class="set-tabs" id="setTabs">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">No sets yet.</div>
+      </div>
+
+      <!-- ADD SET -->
+      <div class="sl" style="margin-top:20px;">// Add New Set</div>
+      <div class="field">
+        <label>Set Name</label>
+        <input type="text" id="newSetName" placeholder="e.g. Crown Zenith" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Single Pack URL (market ref)</label>
+        <input type="text" id="newSetUrl" placeholder="https://www.tcgplayer.com/product/..." autocomplete="off" />
+      </div>
+      <button class="btn" onclick="addSet()">+ Add Set</button>
+      <div class="status-bar" id="setStatus" style="margin-top:8px;"></div>
+
+      <div class="divider"></div>
+
+      <!-- ADD PRODUCT -->
+      <div id="addProductSection" style="display:none">
+        <div class="sl">// Add Product to <span id="activeSetLabel" style="color:var(--text)"></span></div>
+        <div class="field">
+          <label>Product Label</label>
+          <input type="text" id="newProdLabel" placeholder="e.g. Crown Zenith ETB" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>TCGplayer URL</label>
+          <input type="text" id="newProdUrl" placeholder="https://www.tcgplayer.com/product/..." autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Packs Included</label>
+          <input type="number" id="newProdPacks" placeholder="e.g. 10" min="1" step="1" />
+        </div>
+        <button class="btn" onclick="addProduct()">+ Add Product</button>
+
+        <div class="sl" style="margin-top:16px;">// Products in this Set</div>
+        <div id="prodList">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">No products yet.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- BACKUP -->
+      <div class="sl">// Data &amp; Backup</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;">
+        AUTO-SAVED · Browser Storage · GitHub Sync
+      </div>
+      <button class="btn btn-green" style="margin-bottom:8px;" onclick="syncFromGitHub()">⟳ Sync from GitHub</button>
+      <div class="export-row">
+        <button class="export-btn btn-green" onclick="exportJSON()" style="color:var(--green);border-color:rgba(53,241,160,0.3);">⬇ Export Backup</button>
+        <button class="export-btn" onclick="triggerImport()">⬆ Import JSON</button>
+      </div>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)" />
+      <button class="btn btn-red" style="margin-top:8px;font-size:10px;padding:10px;" onclick="confirmClearAll()">Clear All Data</button>
+
+      <div style="height:20px;"></div>
+    </div>
+
+  </div><!-- /tab-content -->
+
+  <!-- ── TAB BAR ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-deals" onclick="switchTab('deals')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      <span>Top Deals</span>
+    </button>
+    <button class="tab-btn" id="tab-data" onclick="switchTab('data')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/><line x1="15" y1="9" x2="15" y2="21"/>
+      </svg>
+      <span>Full Data</span>
+    </button>
+    <button class="tab-btn" id="tab-manage" onclick="switchTab('manage')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>
+      </svg>
+      <span>Manage</span>
+    </button>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+const SCRAPER_KEY   = '46098d434d272741d94fecaaa4c8ae72';
+const STORAGE_KEY   = 'tcg_value_analyzer_v1';
+const GROUP_MAP_KEY = 'tcg_group_map_v1';
+
+// ── STATE ──────────────────────────────────────────────────────────
+let state           = { sets: [], activeSetId: null };
+let analysisResults = [];
+let _groupMap       = {};
+let _groupsCache    = null;
+let _priceCache     = {};
+
+// ── TABS ───────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── PERSISTENCE ────────────────────────────────────────────────────
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} }
+function loadState() { try { const r = localStorage.getItem(STORAGE_KEY); if (r) state = JSON.parse(r); } catch(e) {} }
+function loadGroupMap() { try { _groupMap = JSON.parse(localStorage.getItem(GROUP_MAP_KEY) || '{}'); } catch(e) { _groupMap = {}; } }
+function saveGroupMap() { try { localStorage.setItem(GROUP_MAP_KEY, JSON.stringify(_groupMap)); } catch(e) {} }
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `tcg-value-backup-${Date.now()}.json`; a.click();
+}
+function triggerImport() { document.getElementById('importFile').click(); }
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.sets) throw new Error('Invalid backup file.');
+      if (!confirm(`Replace all data with imported backup (${imported.sets.length} set(s))?`)) return;
+      state = imported;
+      if (state.sets.length && !state.sets.find(s => s.id === state.activeSetId))
+        state.activeSetId = state.sets[0].id;
+      saveState(); renderSidebar();
+      showStatus('setStatus', 'Backup imported.', 'ok');
+    } catch(err) { showStatus('setStatus', 'Import failed: ' + err.message, 'error'); }
+  };
+  reader.readAsText(file); e.target.value = '';
+}
+function confirmClearAll() {
+  if (!confirm('Delete ALL sets and products?')) return;
+  state = { sets: [], activeSetId: null }; analysisResults = [];
+  saveState(); renderSidebar(); renderDeals(); renderFullData();
+}
+
+// ── SETS ───────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function addSet() {
+  const name   = document.getElementById('newSetName').value.trim();
+  const refUrl = document.getElementById('newSetUrl').value.trim();
+  if (!name)   { showStatus('setStatus', 'Please enter a set name.', 'error'); return; }
+  if (!refUrl) { showStatus('setStatus', 'Please enter a single pack URL.', 'error'); return; }
+  if (!extractProductId(refUrl)) { showStatus('setStatus', 'Could not find product ID in URL.', 'error'); return; }
+  const set = { id: uid(), name, refUrl, products: [] };
+  state.sets.push(set); state.activeSetId = set.id; saveState();
+  document.getElementById('newSetName').value = '';
+  document.getElementById('newSetUrl').value  = '';
+  renderSidebar(); showStatus('setStatus', `"${name}" added.`, 'ok');
+}
+function deleteSet(id) {
+  const s = state.sets.find(s => s.id === id); if (!s) return;
+  if (!confirm(`Delete "${s.name}" and all its products?`)) return;
+  state.sets = state.sets.filter(s => s.id !== id);
+  if (state.activeSetId === id) state.activeSetId = state.sets.length ? state.sets[0].id : null;
+  saveState(); renderSidebar();
+}
+function selectSet(id) { state.activeSetId = id; saveState(); renderSidebar(); }
+function activeSet() { return state.sets.find(s => s.id === state.activeSetId) || null; }
+
+// ── PRODUCTS ───────────────────────────────────────────────────────
+function addProduct() {
+  const set = activeSet(); if (!set) { alert('No set selected.'); return; }
+  const label = document.getElementById('newProdLabel').value.trim();
+  const url   = document.getElementById('newProdUrl').value.trim();
+  const packs = parseInt(document.getElementById('newProdPacks').value, 10);
+  if (!url)            { alert('Please enter a TCGplayer URL.'); return; }
+  if (!packs || packs < 1) { alert('Please enter a valid pack count.'); return; }
+  if (!extractProductId(url)) { alert('Could not find product ID in that URL.'); return; }
+  set.products.push({ id: uid(), label: label || `Product ${set.products.length + 1}`, url, packs });
+  saveState(); renderProductList(set);
+  document.getElementById('newProdLabel').value = '';
+  document.getElementById('newProdUrl').value   = '';
+  document.getElementById('newProdPacks').value = '';
+}
+function deleteProduct(setId, prodId) {
+  const set = state.sets.find(s => s.id === setId); if (!set) return;
+  set.products = set.products.filter(p => p.id !== prodId);
+  saveState(); renderProductList(set);
+}
+
+// ── RENDER SIDEBAR (MANAGE TAB) ────────────────────────────────────
+function renderSidebar() {
+  const tabsEl = document.getElementById('setTabs');
+  if (state.sets.length === 0) {
+    tabsEl.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">No sets yet.</div>`;
+  } else {
+    tabsEl.innerHTML = state.sets.map(s => `
+      <div class="set-tab ${s.id === state.activeSetId ? 'active' : ''}" onclick="selectSet('${s.id}')">
+        <div class="set-tab-name">${esc(s.name)}</div>
+        <div class="set-tab-count">${s.products.length} product${s.products.length !== 1 ? 's' : ''}</div>
+        <button class="set-tab-del" onclick="event.stopPropagation();deleteSet('${s.id}')" title="Delete">✕</button>
+      </div>`).join('');
+  }
+  const addSection = document.getElementById('addProductSection');
+  const set = activeSet();
+  if (set) {
+    addSection.style.display = '';
+    document.getElementById('activeSetLabel').textContent = set.name;
+    renderProductList(set);
+  } else {
+    addSection.style.display = 'none';
+  }
+  // Update set filter dropdown
+  updateSetFilter();
+}
+
+function renderProductList(set) {
+  const el = document.getElementById('prodList');
+  if (!set || set.products.length === 0) {
+    el.innerHTML = `<div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">No products yet.</div>`;
+    return;
+  }
+  el.innerHTML = set.products.map(p => `
+    <div class="prod-manage-item">
+      <div class="pmi-info">
+        <div class="pmi-name">${esc(p.label)}</div>
+        <div class="pmi-meta">${p.packs} pack${p.packs !== 1 ? 's' : ''} · ID ${extractProductId(p.url) || '?'}</div>
+      </div>
+      <button class="pmi-del" onclick="deleteProduct('${set.id}','${p.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ── SET FILTER DROPDOWN ────────────────────────────────────────────
+function updateSetFilter() {
+  const sel = document.getElementById('setFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">All Sets</option>' +
+    state.sets.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  if (current && [...sel.options].find(o => o.value === current)) sel.value = current;
+}
+
+// ── PRICE FETCHING ─────────────────────────────────────────────────
+async function proxyFetch(url) {
+  const proxied = `https://api.scraperapi.com/?api_key=${SCRAPER_KEY}&url=${encodeURIComponent(url)}`;
+  const resp = await fetch(proxied);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return JSON.parse(await resp.text());
+}
+function extractProductId(url) {
+  const m = (url || '').match(/tcgplayer\.com\/product\/(\d+)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+async function getGroups() {
+  if (_groupsCache) return _groupsCache;
+  const data = await proxyFetch('https://tcgcsv.com/tcgplayer/3/groups');
+  _groupsCache = data.results || []; return _groupsCache;
+}
+async function getGroupPrices(groupId) {
+  if (_priceCache[groupId]) return _priceCache[groupId];
+  const data = await proxyFetch(`https://tcgcsv.com/tcgplayer/3/${groupId}/prices`);
+  _priceCache[groupId] = data.results || []; return _priceCache[groupId];
+}
+async function fetchPriceForId(productId, urlHint, onStatus) {
+  // Fast path
+  if (_groupMap[productId]) {
+    try {
+      const prices = await getGroupPrices(_groupMap[productId]);
+      const match  = prices.find(p => p.productId === productId);
+      if (match && match.marketPrice != null) { if (onStatus) onStatus('cached'); return { marketPrice: match.marketPrice }; }
+      delete _groupMap[productId];
+    } catch(e) {}
+  }
+  // Slow path
+  if (onStatus) onStatus('searching');
+  const groups = await getGroups();
+  const hint = decodeURIComponent(urlHint || '')
+    .replace(/https?:\/\/[^/]+\/product\/\d+\//i, '')
+    .replace(/[^a-z0-9 ]/gi, ' ').toLowerCase()
+    .replace(/pokemon/gi, '').trim().split('?')[0];
+  function score(g) {
+    const n = (g.name || '').toLowerCase();
+    return hint.split(/\s+/).filter(w => w.length > 2).reduce((a, w) => a + (n.includes(w) ? 1 : 0), 0);
+  }
+  const sorted = [...groups].sort((a, b) => score(b) - score(a));
+  for (const group of sorted) {
+    try {
+      const prices = await getGroupPrices(group.groupId);
+      const match  = prices.find(p => p.productId === productId);
+      if (match && match.marketPrice != null) {
+        _groupMap[productId] = group.groupId; saveGroupMap();
+        return { marketPrice: match.marketPrice };
+      }
+    } catch(e) {}
+  }
+  throw new Error(`No price found for product ID ${productId}`);
+}
+
+// ── RUN ANALYSIS ───────────────────────────────────────────────────
+async function runAnalysis() {
+  const setsWithProducts = state.sets.filter(s => s.products.length > 0);
+  if (setsWithProducts.length === 0) {
+    showStatus('runStatus', 'No sets with products yet.', 'error'); return;
+  }
+  document.getElementById('runBtn').disabled = true;
+  _groupsCache = null; _priceCache = {}; analysisResults = [];
+  const total = setsWithProducts.reduce((a, s) => a + s.products.length, 0);
+  let done = 0, hits = 0, searches = 0;
+
+  showStatus('runStatus', `<span class="spinner"></span>Starting — ${setsWithProducts.length} set(s), ${total} product(s)...`, 'loading');
+
+  for (const set of setsWithProducts) {
+    const refId = extractProductId(set.refUrl);
+    showStatus('runStatus', `<span class="spinner"></span>Fetching ref price: <strong>${esc(set.name)}</strong>`, 'loading');
+    let refPrice = null, refName = set.name;
+    try {
+      const ref = await fetchPriceForId(refId, set.refUrl, s => s === 'cached' ? hits++ : searches++);
+      refPrice = ref.marketPrice;
+    } catch(e) {
+      analysisResults.push({ setId: set.id, setName: set.name, refPrice: null, refName, refError: e.message, rows: [] });
+      continue;
+    }
+    const rows = [];
+    for (const prod of set.products) {
+      done++;
+      showStatus('runStatus',
+        `<span class="spinner"></span>${done}/${total}: <strong>${esc(prod.label)}</strong>` +
+        (hits > 0 ? ` · ⚡${hits}` : '') + (searches > 0 ? ` · 🔍${searches}` : ''), 'loading');
+      const pid = extractProductId(prod.url);
+      try {
+        const result = await fetchPriceForId(pid, prod.url, s => s === 'cached' ? hits++ : searches++);
+        const ppp = result.marketPrice / prod.packs;
+        const pct = ((ppp - refPrice) / refPrice) * 100;
+        rows.push({ label: prod.label, url: prod.url, packs: prod.packs, boxPrice: result.marketPrice, ppp, pct });
+      } catch(e) {
+        rows.push({ label: prod.label, url: prod.url, packs: prod.packs, boxPrice: null, ppp: null, pct: null, error: e.message });
+      }
+    }
+    const valid   = rows.filter(r => r.ppp !== null).sort((a, b) => a.pct - b.pct);
+    const errored = rows.filter(r => r.ppp === null);
+    if (valid.length > 0) valid[0].isBest = true;
+    analysisResults.push({ setId: set.id, setName: set.name, refPrice, refName, rows: [...valid, ...errored] });
+  }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('lastRunBadge').innerHTML = `${now.toLocaleDateString()}<br>${timeStr} · ⚡${hits} 🔍${searches}`;
+  hideStatus('runStatus');
+  document.getElementById('runBtn').disabled = false;
+  renderDeals(); renderFullData();
+  switchTab('deals');
+}
+
+// ── RENDER DEALS TAB ───────────────────────────────────────────────
+function renderDeals() {
+  const el = document.getElementById('dealsContent');
+  const exportBtn = document.getElementById('exportTop10Btn');
+
+  const allUnder = [];
+  for (const res of analysisResults) {
+    if (res.refError || !res.refPrice) continue;
+    for (const r of res.rows) {
+      if (r.ppp != null && r.pct < 0) allUnder.push({ ...r, setName: res.setName, refPrice: res.refPrice });
+    }
+  }
+  allUnder.sort((a, b) => a.pct - b.pct);
+  window._top10 = allUnder.slice(0, 10);
+
+  if (window._top10.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🎯</div>No products under market price right now.</div>`;
+    exportBtn.style.display = 'none'; return;
+  }
+  exportBtn.style.display = '';
+
+  el.innerHTML = `<div class="card fade-in">` +
+    window._top10.map((r, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+      return `
+      <div class="deal-row ${i === 0 ? 'top1' : ''}">
+        <div class="deal-rank ${medal ? '' : 'num'}">${medal || '#' + (i + 1)}</div>
+        <div class="deal-info">
+          <div class="deal-name">${esc(r.label)}</div>
+          <div class="deal-set">${esc(r.setName)} · ${r.packs} packs · $${r.refPrice.toFixed(2)}/pack ref</div>
+        </div>
+        <div class="deal-prices">
+          <div class="deal-ppp">$${r.ppp.toFixed(2)}/pk</div>
+          <div class="deal-pct under">${r.pct.toFixed(1)}%</div>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+// ── RENDER FULL DATA TAB ───────────────────────────────────────────
+function renderFullData() {
+  const el     = document.getElementById('fullDataContent');
+  const filter = document.getElementById('setFilter').value;
+  const exportBtn = document.getElementById('exportAllBtn');
+
+  if (analysisResults.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div>Run analysis to see full data</div>`;
+    exportBtn.style.display = 'none'; return;
+  }
+  exportBtn.style.display = '';
+
+  const toShow = filter === 'all'
+    ? analysisResults
+    : analysisResults.filter(r => r.setId === filter);
+
+  if (toShow.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div>No data for selected set</div>`; return;
+  }
+
+  el.innerHTML = toShow.map(res => {
+    if (res.refError) return `
+      <div class="set-section">
+        <div class="set-section-title">${esc(res.setName)}</div>
+        <div class="set-ref-line" style="color:var(--red)">⚠ ${esc(res.refError)}</div>
+      </div>`;
+
+    return `
+      <div class="set-section fade-in">
+        <div class="set-section-title">${esc(res.setName)}</div>
+        <div class="set-ref-line">Market ref: <strong>$${res.refPrice.toFixed(2)}</strong> / pack</div>
+        <div class="card">
+          ${res.rows.map(r => {
+            if (r.error) return `
+              <div class="prod-row">
+                <div class="prod-info">
+                  <div class="prod-name">${esc(r.label)}</div>
+                  <div class="prod-meta" style="color:var(--red)">⚠ ${esc(r.error)}</div>
+                </div>
+              </div>`;
+            const cls = r.pct <= -0.5 ? 'under' : r.pct >= 0.5 ? 'over' : 'even';
+            return `
+              <div class="prod-row ${r.isBest ? 'best' : ''}">
+                <div class="prod-info">
+                  <div class="prod-name">${esc(r.label)}${r.isBest ? '<span class="badge-best">Best</span>' : ''}</div>
+                  <div class="prod-meta">${r.packs} packs · $${r.boxPrice.toFixed(2)} box</div>
+                </div>
+                <div class="prod-right">
+                  <div class="prod-ppp">$${r.ppp.toFixed(2)}/pk</div>
+                </div>
+                <span class="pct-chip ${cls}">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── EXPORT ─────────────────────────────────────────────────────────
+function exportTop10CSV() {
+  const top10 = window._top10 || []; if (!top10.length) return;
+  const lines = ['Rank,Set,Product Label,Box Price,Packs,Price Per Pack,Market Ref,vs Market %,URL'];
+  top10.forEach((r, i) => lines.push([i+1, `"${r.setName}"`, `"${r.label}"`, r.boxPrice.toFixed(2), r.packs, r.ppp.toFixed(2), r.refPrice.toFixed(2), r.pct.toFixed(2)+'%', `"${r.url}"`].join(',')));
+  dl(lines.join('\n'), `tcg-top10-${Date.now()}.csv`);
+}
+function exportAllCSV() {
+  const lines = ['Set,Product,Box Price,Packs,Price Per Pack,Market Ref,vs Market %,Best Buy,URL'];
+  for (const res of analysisResults) {
+    if (res.refError) continue;
+    for (const r of res.rows) lines.push([`"${res.setName}"`, `"${r.label}"`, r.boxPrice!=null?r.boxPrice.toFixed(2):'N/A', r.packs, r.ppp!=null?r.ppp.toFixed(2):'N/A', res.refPrice.toFixed(2), r.pct!=null?(r.pct>=0?'+':'')+r.pct.toFixed(2)+'%':'N/A', r.isBest?'YES':'NO', `"${r.url}"`].join(','));
+  }
+  dl(lines.join('\n'), `tcg-full-${Date.now()}.csv`);
+}
+function dl(content, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv' }));
+  a.download = filename; a.click();
+}
+
+// ── PULL TO REFRESH ────────────────────────────────────────────────
+let ptStart = 0, ptActive = false;
+const dealsPane = document.getElementById('pane-deals');
+dealsPane.addEventListener('touchstart', e => { if (dealsPane.scrollTop === 0) { ptStart = e.touches[0].clientY; ptActive = true; } }, { passive: true });
+dealsPane.addEventListener('touchmove', e => {
+  if (!ptActive) return;
+  const delta = e.touches[0].clientY - ptStart;
+  if (delta > 60) document.getElementById('ptrIndicator').classList.add('visible');
+}, { passive: true });
+dealsPane.addEventListener('touchend', e => {
+  const delta = e.changedTouches[0].clientY - ptStart;
+  document.getElementById('ptrIndicator').classList.remove('visible');
+  if (ptActive && delta > 60) { switchTab('manage'); runAnalysis(); }
+  ptActive = false;
+});
+
+// ── STATUS HELPERS ─────────────────────────────────────────────────
+function showStatus(id, msg, type) { const e = document.getElementById(id); e.innerHTML = msg; e.className = `status-bar ${type}`; if (type === 'ok') setTimeout(() => e.className = 'status-bar', 3000); }
+function hideStatus(id) { document.getElementById(id).className = 'status-bar'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── GITHUB SYNC ────────────────────────────────────────────────────
+const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/djhazard/tcg-value/refs/heads/main/tcg-value-backup.json';
+
+async function syncFromGitHub() {
+  showStatus('setStatus', '<span class="spinner"></span>Syncing from GitHub...', 'loading');
+  try {
+    const resp = await fetch(GITHUB_JSON_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const imported = await resp.json();
+    if (!imported.sets) throw new Error('Invalid JSON structure.');
+    state = imported;
+    if (state.sets.length && !state.sets.find(s => s.id === state.activeSetId))
+      state.activeSetId = state.sets[0].id;
+    saveState();
+    renderSidebar();
+    showStatus('setStatus', `✓ Synced — ${state.sets.length} set(s), ${state.sets.reduce((a,s)=>a+s.products.length,0)} products`, 'ok');
+  } catch(e) {
+    showStatus('setStatus', `⚠ Sync failed: ${e.message}`, 'error');
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+loadState(); loadGroupMap(); renderSidebar();
+syncFromGitHub();
+</script>
+</body>
+</html>
