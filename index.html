@@ -654,8 +654,9 @@
       <!-- BACKUP -->
       <div class="sl">// Data &amp; Backup</div>
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;">
-        AUTO-SAVED · Browser Storage
+        AUTO-SAVED · Browser Storage · GitHub Sync
       </div>
+      <button class="btn btn-green" style="margin-bottom:8px;" onclick="syncFromGitHub()">⟳ Sync from GitHub</button>
       <div class="export-row">
         <button class="export-btn btn-green" onclick="exportJSON()" style="color:var(--green);border-color:rgba(53,241,160,0.3);">⬇ Export Backup</button>
         <button class="export-btn" onclick="triggerImport()">⬆ Import JSON</button>
@@ -1095,8 +1096,30 @@ function showStatus(id, msg, type) { const e = document.getElementById(id); e.in
 function hideStatus(id) { document.getElementById(id).className = 'status-bar'; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ── GITHUB SYNC ────────────────────────────────────────────────────
+const GITHUB_JSON_URL = 'https://raw.githubusercontent.com/djhazard/tcg-value/refs/heads/main/tcg-value-backup.json';
+
+async function syncFromGitHub() {
+  showStatus('setStatus', '<span class="spinner"></span>Syncing from GitHub...', 'loading');
+  try {
+    const resp = await fetch(GITHUB_JSON_URL + '?t=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const imported = await resp.json();
+    if (!imported.sets) throw new Error('Invalid JSON structure.');
+    state = imported;
+    if (state.sets.length && !state.sets.find(s => s.id === state.activeSetId))
+      state.activeSetId = state.sets[0].id;
+    saveState();
+    renderSidebar();
+    showStatus('setStatus', `✓ Synced — ${state.sets.length} set(s), ${state.sets.reduce((a,s)=>a+s.products.length,0)} products`, 'ok');
+  } catch(e) {
+    showStatus('setStatus', `⚠ Sync failed: ${e.message}`, 'error');
+  }
+}
+
 // ── INIT ───────────────────────────────────────────────────────────
 loadState(); loadGroupMap(); renderSidebar();
+syncFromGitHub();
 </script>
 </body>
 </html>
